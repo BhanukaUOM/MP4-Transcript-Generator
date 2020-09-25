@@ -6,7 +6,9 @@ def transcribe_model_selection_gcs(gcs_uri, model, filename):
 
     config = speech.RecognitionConfig(    
         language_code="en-US",
+        enable_automatic_punctuation=True,
         model=model,
+        enable_word_time_offsets=True,
     )
 
     operation = client.long_running_recognize(
@@ -24,9 +26,17 @@ def transcribe_model_selection_gcs(gcs_uri, model, filename):
             print("-" * 20)
             print("First alternative of result {}".format(i))
             print(u"Transcript: {}".format(alternative.transcript))
-            res[idx] += f"{alternative.transcript}. "
+            sentence_start_time = 0.00
+            sentence_end_time = 0.00
+            for word_info in alternative.words:
+                #word = word_info.word
+                start_time = word_info.start_time
+                end_time = word_info.end_time
+                sentence_start_time = min(sentence_start_time, start_time.total_seconds())
+                sentence_end_time = max(sentence_end_time, end_time.total_seconds())
+            res[idx] += f"{sentence_start_time} - {sentence_end_time} : {alternative.transcript}\n"
     for i in range(len(res)):
-        f = open(f"{filename}-transcript-{i}.txt", "a")
+        f = open(f"{filename}-transcript-{i}.txt", "w")
         f.write(res[i])
         f.close()
 
