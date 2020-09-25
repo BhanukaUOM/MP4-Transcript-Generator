@@ -1,4 +1,6 @@
 from google.cloud import speech
+from time import strftime
+from time import gmtime
 def transcribe_model_selection_gcs(gcs_uri, model, filename):
     client = speech.SpeechClient()
 
@@ -34,9 +36,11 @@ def transcribe_model_selection_gcs(gcs_uri, model, filename):
                 end_time = word_info.end_time
                 sentence_start_time = min(sentence_start_time, start_time.total_seconds())
                 sentence_end_time = max(sentence_end_time, end_time.total_seconds())
-            res[idx] += f"{sentence_start_time} - {sentence_end_time} : {alternative.transcript}\n"
+            res[idx] += f"{i+1}\n"
+            res[idx] += f"{strftime('%H:%M:%S', gmtime(sentence_start_time))},000 --> {strftime('%H:%M:%S', gmtime(sentence_end_time))},000\n"
+            res[idx] += f"{alternative.transcript}\n\n"
     for i in range(len(res)):
-        f = open(f"{filename}-transcript-{i}.txt", "w")
+        f = open(f"{filename}-transcript-{i}.srt", "w")
         f.write(res[i])
         f.close()
 
