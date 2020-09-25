@@ -1,0 +1,1 @@
+for %%a in (*) do ffmpeg -i "%%a" -acodec pcm_s16le -ac 1 -ar 16000 "%%a.wav"
