@@ -1,5 +1,5 @@
 from google.cloud import speech
-def transcribe_model_selection_gcs(gcs_uri, model):
+def transcribe_model_selection_gcs(gcs_uri, model, filename):
     client = speech.SpeechClient()
 
     audio = speech.RecognitionAudio(uri=gcs_uri)
@@ -26,7 +26,7 @@ def transcribe_model_selection_gcs(gcs_uri, model):
             print(u"Transcript: {}".format(alternative.transcript))
             res[idx] += f"{alternative.transcript}. "
     for i in range(len(res)):
-        f = open("transcript-{}.txt".format(i), "a")
+        f = open(f"{filename}-transcript-{i}.txt", "a")
         f.write(res[i])
         f.close()
 
@@ -44,4 +44,4 @@ def upload_to_bucket(blob_name, path_to_file):
 import wave, os, glob
 for filename in glob.glob(os.path.join('', '*.wav')):  
     upload_to_bucket(filename, filename)
-    transcribe_model_selection_gcs(f"gs://{bucket_name}/{filename}", "default")
+    transcribe_model_selection_gcs(f"gs://{bucket_name}/{filename}", "default", filename)
