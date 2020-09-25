@@ -3,3 +3,5 @@
 *.wav
 *.txt
 !requirments.txt
+*.srt
+*.vtt

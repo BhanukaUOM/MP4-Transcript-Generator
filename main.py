@@ -28,16 +28,20 @@ def transcribe_model_selection_gcs(gcs_uri, model, filename):
             print("-" * 20)
             print("First alternative of result {}".format(i))
             print(u"Transcript: {}".format(alternative.transcript))
-            sentence_start_time = 0.00
+            sentence_start_time = 99999999.00
             sentence_end_time = 0.00
             for word_info in alternative.words:
                 #word = word_info.word
                 start_time = word_info.start_time
                 end_time = word_info.end_time
-                sentence_start_time = min(sentence_start_time, start_time.total_seconds())
-                sentence_end_time = max(sentence_end_time, end_time.total_seconds())
+                if sentence_start_time >= start_time.total_seconds():
+                    sentence_start_time = start_time.total_seconds()
+                    sentence_start_time_ms = str(start_time.microseconds // 1000).zfill(3)
+                if sentence_end_time <= end_time.total_seconds():
+                    sentence_end_time = end_time.total_seconds()
+                    sentence_end_time_ms = str(end_time.microseconds // 1000).zfill(3)
             res[idx] += f"{i+1}\n"
-            res[idx] += f"{strftime('%H:%M:%S', gmtime(sentence_start_time))},000 --> {strftime('%H:%M:%S', gmtime(sentence_end_time))},000\n"
+            res[idx] += f"{strftime('%H:%M:%S', gmtime(sentence_start_time))},{sentence_start_time_ms} --> {strftime('%H:%M:%S', gmtime(sentence_end_time))},{sentence_end_time_ms}\n"
             res[idx] += f"{alternative.transcript}\n\n"
     for i in range(len(res)):
         f = open(f"{filename}-transcript-{i}.srt", "w")
