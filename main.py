@@ -44,7 +44,7 @@ def transcribe_model_selection_gcs(gcs_uri, model, filename):
             res[idx] += f"{strftime('%H:%M:%S', gmtime(sentence_start_time))},{sentence_start_time_ms} --> {strftime('%H:%M:%S', gmtime(sentence_end_time))},{sentence_end_time_ms}\n"
             res[idx] += f"{alternative.transcript}\n\n"
     for i in range(len(res)):
-        f = open(f"{filename}-transcript-{i}.srt", "w")
+        f = open(f"{filename}-subtitle-{i}.srt", "w")
         f.write(res[i])
         f.close()
 
