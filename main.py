@@ -60,6 +60,12 @@ def upload_to_bucket(blob_name, path_to_file):
     return blob.public_url
 
 import wave, os, glob
-for filename in glob.glob(os.path.join('', '*.wav')):  
-    upload_to_bucket(filename, filename)
-    transcribe_model_selection_gcs(f"gs://{bucket_name}/{filename}", "default", filename)
+import subprocess
+for filename in glob.glob(os.path.join('', '*.mp4')):
+    audio_filename = f"{'.'.join(filename.split('.')[0:-1])}.wav"
+    print(f"\nConverting {filename} to {audio_filename}")
+    subprocess.Popen(f"ffmpeg -i \"{filename}\" -acodec pcm_s16le -ac 1 -ar 16000 \"{audio_filename}\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    print(f"Uploading {audio_filename}")
+    upload_to_bucket(audio_filename, audio_filename)
+    print(f"Subtitle Generate Started...")
+    transcribe_model_selection_gcs(f"gs://{bucket_name}/{audio_filename}", "default", '.'.join(filename.split('.')[0:-1]))
