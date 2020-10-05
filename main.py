@@ -61,33 +61,53 @@ def speech_to_text_conversion(gcs_uri, model):
 """
 def generate_subtitle(speech_to_text_response, file_basename):
     print(f"Subtitle Generate Started...")
-    res = []
+    alternative_results = []
+    alternative_results_idx = []
     for i, result in enumerate(speech_to_text_response.results):
-        for idx in range(len(result.alternatives)):
-            if (len(res) <= idx):
-                res.append('')
-            alternative = result.alternatives[idx]
+        for alternative_idx in range(len(result.alternatives)):
+            alternative = result.alternatives[alternative_idx]
             print("-" * 20)
             print("First alternative of result {}".format(i))
             print(u"Transcript: {}".format(alternative.transcript))
-            sentence_start_time = 99999999.00
+
+            if (len(alternative_results) <= alternative_idx):
+                alternative_results.append('')
+                alternative_results_idx.append(0)
+
+            sentense_start_idx = 0
+            sentence_start_time = 0.00
+            sentence_start_time_ms = '000'
             sentence_end_time = 0.00
-            for word_info in alternative.words:
-                #word = word_info.word
+            sentence_end_time_ms = '000'
+            sentense = ''
+            for idx, word_info in enumerate(alternative.words):
+                word = word_info.word
                 start_time = word_info.start_time
                 end_time = word_info.end_time
-                if sentence_start_time >= start_time.total_seconds():
+                is_end_of_sentense = word[-1] == '.'
+                sentense += f"{word} "
+
+                if sentense_start_idx == idx:
                     sentence_start_time = start_time.total_seconds()
                     sentence_start_time_ms = str(start_time.microseconds // 1000).zfill(3)
-                if sentence_end_time <= end_time.total_seconds():
+
+                if idx == len(alternative.words)-1 or is_end_of_sentense:
                     sentence_end_time = end_time.total_seconds()
                     sentence_end_time_ms = str(end_time.microseconds // 1000).zfill(3)
-            res[idx] += f"{i+1}\n"
-            res[idx] += f"{strftime('%H:%M:%S', gmtime(sentence_start_time))},{sentence_start_time_ms} --> {strftime('%H:%M:%S', gmtime(sentence_end_time))},{sentence_end_time_ms}\n"
-            res[idx] += f"{alternative.transcript}\n\n"
-    for i in range(len(res)):
+
+                    # Append Subtitile Sentense
+                    alternative_results_idx[alternative_idx] += 1
+                    alternative_results[alternative_idx] += f"{alternative_results_idx[alternative_idx]}\n"
+                    alternative_results[alternative_idx] += f"{strftime('%H:%M:%S', gmtime(sentence_start_time))},{sentence_start_time_ms} --> {strftime('%H:%M:%S', gmtime(sentence_end_time))},{sentence_end_time_ms}\n"
+                    alternative_results[alternative_idx] += f"{sentense}\n\n"
+
+                    sentense = ''
+                    sentense_start_idx = idx + 1
+
+    # Write Subtitile to SRT File
+    for i in range(len(alternative_results)):
         f = open(f"{file_basename}-subtitle-{i}.srt", "w")
-        f.write(res[i])
+        f.write(alternative_results[i])
         f.close()
 
 # Main
