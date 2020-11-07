@@ -5,7 +5,7 @@ from google.cloud import storage
 import wave, os, glob
 import subprocess
 
-BUCKET_NAME = 'testdata1234'
+BUCKET_NAME = 'speech2text-artifacts'
 
 """
     Upload Local File to Cloud Storage Bucket
@@ -41,6 +41,7 @@ def speech_to_text_conversion(gcs_uri, model):
         language_code="en-US",
         enable_automatic_punctuation=True,
         model=model,
+        use_enhanced=True,
         enable_word_time_offsets=True,
     )
 
@@ -61,54 +62,51 @@ def speech_to_text_conversion(gcs_uri, model):
 """
 def generate_subtitle(speech_to_text_response, file_basename):
     print(f"Subtitle Generate Started...")
-    alternative_results = []
-    alternative_results_idx = []
-    for i, result in enumerate(speech_to_text_response.results):
-        for alternative_idx in range(len(result.alternatives)):
-            alternative = result.alternatives[alternative_idx]
-            print("-" * 20)
-            print("First alternative of result {}".format(i))
-            print(u"Transcript: {}".format(alternative.transcript))
+    
+    subtitle = ''
+    sub_idx = 1
+    for result in speech_to_text_response.results:
+        best_alternative = result.alternatives[0]
+        transcript = best_alternative.transcript
+        confidence = best_alternative.confidence
+        print("-" * 20)
+        print(f"Transcript: {transcript}")
+        print(f"Confidence: {confidence}%")
 
-            if (len(alternative_results) <= alternative_idx):
-                alternative_results.append('')
-                alternative_results_idx.append(0)
+        sentense_start_idx = 0
+        sentence_start_time = 0.00
+        sentence_start_time_ms = '000'
+        sentence_end_time = 0.00
+        sentence_end_time_ms = '000'
+        sentense = ''
+        for idx, word_info in enumerate(best_alternative.words):
+            word = word_info.word
+            start_time = word_info.start_time
+            end_time = word_info.end_time
+            is_end_of_sentense = word[-1] in ['.', '?']
+            sentense += f"{word} "
 
-            sentense_start_idx = 0
-            sentence_start_time = 0.00
-            sentence_start_time_ms = '000'
-            sentence_end_time = 0.00
-            sentence_end_time_ms = '000'
-            sentense = ''
-            for idx, word_info in enumerate(alternative.words):
-                word = word_info.word
-                start_time = word_info.start_time
-                end_time = word_info.end_time
-                is_end_of_sentense = word[-1] == '.'
-                sentense += f"{word} "
+            if sentense_start_idx == idx:
+                sentence_start_time = start_time.total_seconds()
+                sentence_start_time_ms = str(start_time.microseconds // 1000).zfill(3)
 
-                if sentense_start_idx == idx:
-                    sentence_start_time = start_time.total_seconds()
-                    sentence_start_time_ms = str(start_time.microseconds // 1000).zfill(3)
+            if idx == len(best_alternative.words)-1 or is_end_of_sentense:
+                sentence_end_time = end_time.total_seconds()
+                sentence_end_time_ms = str(end_time.microseconds // 1000).zfill(3)
 
-                if idx == len(alternative.words)-1 or is_end_of_sentense:
-                    sentence_end_time = end_time.total_seconds()
-                    sentence_end_time_ms = str(end_time.microseconds // 1000).zfill(3)
+                # Append Subtitile Sentense
+                subtitle += f"{sub_idx}\n"
+                subtitle += f"{strftime('%H:%M:%S', gmtime(sentence_start_time))},{sentence_start_time_ms} --> {strftime('%H:%M:%S', gmtime(sentence_end_time))},{sentence_end_time_ms}\n"
+                subtitle += f"{sentense}\n\n"
 
-                    # Append Subtitile Sentense
-                    alternative_results_idx[alternative_idx] += 1
-                    alternative_results[alternative_idx] += f"{alternative_results_idx[alternative_idx]}\n"
-                    alternative_results[alternative_idx] += f"{strftime('%H:%M:%S', gmtime(sentence_start_time))},{sentence_start_time_ms} --> {strftime('%H:%M:%S', gmtime(sentence_end_time))},{sentence_end_time_ms}\n"
-                    alternative_results[alternative_idx] += f"{sentense}\n\n"
-
-                    sentense = ''
-                    sentense_start_idx = idx + 1
+                sentense = ''
+                sub_idx += 1
+                sentense_start_idx = idx + 1
 
     # Write Subtitile to SRT File
-    for i in range(len(alternative_results)):
-        f = open(f"{file_basename}-subtitle-{i}.srt", "w")
-        f.write(alternative_results[i])
-        f.close()
+    f = open(f"{file_basename}-subtitle.srt", "w")
+    f.write(subtitle)
+    f.close()
 
 # Main
 for video_filename in glob.glob(os.path.join('', '*.mp4')):
@@ -123,7 +121,7 @@ for video_filename in glob.glob(os.path.join('', '*.mp4')):
     gcs_uri = upload_to_bucket(audio_filename, audio_filename)
     
     # Speech to Text Conversion
-    speech_to_text_response = speech_to_text_conversion(gcs_uri, "default")
+    speech_to_text_response = speech_to_text_conversion(gcs_uri, "video")
 
     # Generate Subtitile
     generate_subtitle(speech_to_text_response, audio_file_basename)
