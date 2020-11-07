@@ -2,6 +2,6 @@
 *.mp3
 *.wav
 *.txt
-!requirments.txt
+!requirements.txt
 *.srt
 *.vtt
